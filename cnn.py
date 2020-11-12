@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
 import pandas as pd
 from multiprocessing import Process, freeze_support
 import time
@@ -29,7 +30,6 @@ non_human_csv= pd.read_csv(os.path.join("import_data/non_human.csv"))
 options=['face_with_mask','face_without_mask']
 train= train_csv[train_csv['classname'].isin(options)]
 train.sort_values('name',axis=0,inplace=True)
-mylist = os.listdir(non_human_images_dir)
 
 
 img_size=50
@@ -79,7 +79,10 @@ y=lbl.fit_transform(y)
 
 print("Data preprocessing end....")
 
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 
+print(len(X_train))
+print(len(y_train))
 
 # transform = transforms.Compose(
 #     [transforms.ToTensor(),
