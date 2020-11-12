@@ -3,7 +3,7 @@ name,x1,x2,y1,y2,classname
 2756.png,505,10,723,283,face_with_mask
 2756.png,75,252,264,390,face_with_mask
 2756.png,521,136,711,277,face_with_mask
-6098.jpg,360,85,728,653,face_no_mask
+6098.jpg,360,85,728,653,face_without_mask
 6427.png,218,98,577,580,face_with_mask
 6427.png,278,386,582,582,face_with_mask
 4591.png,239,9,522,342,face_with_mask
