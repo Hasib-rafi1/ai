@@ -37,11 +37,15 @@ def create_data():
             arr=[]
             for j in train.iloc[i]:
                    arr.append(j)
-            img_array=cv2.imread(os.path.join(images_dir,arr[0]),cv2.IMREAD_GRAYSCALE)
-            crop_image = img_array[arr[2]:arr[4],arr[1]:arr[3]]
-            new_img_array=cv2.resize(crop_image,(img_size,img_size))
-            human_data.append([new_img_array,arr[5]])
-            data.append([new_img_array,arr[5]])
+            try:
+                img_array=cv2.imread(os.path.join(images_dir,arr[0]),cv2.IMREAD_GRAYSCALE)
+                crop_image = img_array[arr[2]:arr[4],arr[1]:arr[3]]
+                new_img_array=cv2.resize(crop_image,(img_size,img_size))
+                human_data.append([new_img_array,arr[5]])
+                data.append([new_img_array,arr[5]])
+            except Exception as e:
+                print(arr[0])
+                print(str(e))
 create_data()
 non_human_data=[]
 def create_non_human_data():
