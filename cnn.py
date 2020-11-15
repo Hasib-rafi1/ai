@@ -11,6 +11,8 @@ import os
 import cv2
 import csv
 import random
+import tensorflow as tf
+from tensorflow.keras import datasets, layers, models
 
 
 print("Data preprocessing start....")
@@ -78,3 +80,17 @@ X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 
 print(len(X_train))
 print(len(y_train))
+
+model = models.Sequential()
+model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+model.add(layers.MaxPooling2D((2, 2)))
+model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+
+history = model.fit(X_train, y_train, epochs=10,
+                    validation_data=(X_test, y_test))
+
+test_loss, test_acc = model.evaluate(X_test,  y_test, verbose=2)
+
+print(test_acc)
