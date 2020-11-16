@@ -105,9 +105,10 @@ num_epochs = 10
 num_classes =3
 learning_rate = 0.001
 
-transform = transforms.Compose(
-    [transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 trainset = MyDataset(data= X_train, target= y_train, transform=transform)
 
