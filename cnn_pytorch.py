@@ -12,6 +12,8 @@ import random
 from sklearn.model_selection import train_test_split
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
 
 class MyDataset(Dataset):
     def __init__(self, data, target, transform=None):
@@ -106,7 +108,8 @@ num_classes =3
 learning_rate = 0.001
 
 transform = transforms.Compose(
-    [transforms.ToTensor(),
+    [transforms.ToPILImage(),
+     transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 trainset = MyDataset(data= X_train, target= y_train, transform=transform)
@@ -142,12 +145,12 @@ class CNN(nn.Module):
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.MaxPool2d(kernel_size=1, stride=2),
         )
 
         self.fc_layer = nn.Sequential(
             nn.Dropout(p=0.1),
-            nn.Linear(8 * 8 * 64, 1000),
+            nn.Linear(832, 1000),
             nn.ReLU(inplace=True),
             nn.Linear(1000, 512),
             nn.ReLU(inplace=True),
@@ -204,6 +207,7 @@ if __name__ == '__main__':
                               (correct / total) * 100))
 
     model.eval()
+    all_pred=torch.tensor([])
     with torch.no_grad():
         correct = 0
         total = 0
@@ -212,9 +216,11 @@ if __name__ == '__main__':
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-
+            all_pred = torch.cat((all_pred,outputs),dim=0)
         print('Test Accuracy of the model on the 10000 test images: {} %'.format((correct / total) * 100))
 
     toc = time.time()
 
     print('duration = ', toc - tic)
+    print(classification_report(testset.target.numpy(),np.argmax(all_pred.numpy(), axis=1)))
+    print("Confusion Matrix:\n", confusion_matrix(testset.target.numpy(),np.argmax(all_pred.numpy(), axis=1)))
