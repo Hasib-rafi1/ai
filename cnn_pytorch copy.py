@@ -20,7 +20,7 @@ from sklearn.metrics import confusion_matrix
 
 tic = time.time()
 
-num_epochs = 10
+num_epochs = 3
 num_classes =3
 learning_rate = 0.001
 
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     dataset = MyDataset(X_train, y_train)
     train_loader = DataLoader(
     dataset,
-    batch_size=128,
+    batch_size=10,
     shuffle=True,
     num_workers=2,
 )
