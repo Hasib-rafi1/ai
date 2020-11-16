@@ -1,38 +1,28 @@
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset,DataLoader
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-import torchvision.datasets
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+import pandas as pd
 from multiprocessing import Process, freeze_support
 import time
-import pandas as pd
 import os
 import cv2
+import csv
 import random
-from sklearn.model_selection import train_test_split
+import tensorflow as tf
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+from tensorflow.keras import datasets, layers, models , utils
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
+# torch.utils.data.Dataset
 
-class MyDataset(Dataset):
-    def __init__(self, data, target, transform=None):
-        self.data = torch.from_numpy(data).float()
-        self.target = torch.from_numpy(target).long()
-        self.transform = transform
+tic = time.time()
 
-    def __getitem__(self, index):
-        x = self.data[index]
-        y = self.target[index]
-
-        if self.transform:
-            x = self.transform(x)
-
-        return x, y
-
-    def __len__(self):
-        return len(self.data)
-
+num_epochs = 3
+num_classes =3
+learning_rate = 0.001
 
 print("Data preprocessing start....")
 images_dir = os.path.join('import_data/data/images')
@@ -40,10 +30,13 @@ non_human_images_dir = os.path.join('import_data/data/non_human')
 train_csv= pd.read_csv(os.path.join("import_data/train.csv"))
 non_human_csv= pd.read_csv(os.path.join("import_data/non_human.csv"))
 # print(len(train_csv))
+# print(len(os.listdir(images_dir)))
+# print(len(non_human_csv))
 
 options=['face_with_mask','face_without_mask']
 train= train_csv[train_csv['classname'].isin(options)]
 train.sort_values('name',axis=0,inplace=True)
+
 
 img_size=50
 data=[]
@@ -84,6 +77,7 @@ create_non_human_data()
 # print(len(non_human_data))
 
 final_data = random.sample(data,len(data))
+
 x=[]
 y=[]
 for features, labels in final_data:
@@ -93,36 +87,48 @@ for features, labels in final_data:
 lbl=LabelEncoder()
 y=lbl.fit_transform(y)
 
-X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+print("Data preprocessing end....")
 
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+print("Training Data:")
+print(len(X_train))
+print("Testing Data:")
+print(len(X_test))
+
+import collections
+print("0 =>")
+print(lbl.inverse_transform([0]))
+print("1 =>")
+print(lbl.inverse_transform([1]))
+print("2 =>")
+print(lbl.inverse_transform([2]))
+
+print("Training ")
+print(collections.Counter(y_train))
+print("Testing ")
+print(collections.Counter(y_test))
+# X_train = np.expand_dims(X_train, -1)
+# X_test = np.expand_dims(X_test, -1)
 X_train = np.array(X_train)
 X_test = np.array(X_test)
-y_train = np.array(y_train)
-y_test = np.array(y_test)
 
+class MyDataset(Dataset):
+    def __init__(self, data, target, transform=None):
+        self.data = torch.from_numpy(data).float()
+        self.target = torch.from_numpy(target).long()
+        self.transform = transform
 
-tic = time.time()
+    def __getitem__(self, index):
+        x = self.data[index]
+        y = self.target[index]
 
-num_epochs = 10
-num_classes =3
-learning_rate = 0.001
+        if self.transform:
+            x = self.transform(x)
 
-transform = transforms.Compose(
-    [transforms.ToPILImage(),
-     transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        return x, y
 
-trainset = MyDataset(data= X_train, target= y_train, transform=transform)
-
-
-train_loader = torch.utils.data.DataLoader(trainset, batch_size=32,
-                                           shuffle=True, num_workers=2)
-
-testset = trainset = MyDataset(data= X_test, target= y_test, transform=transform)
-
-test_loader = torch.utils.data.DataLoader(testset, batch_size=1000,
-                                          shuffle=False, num_workers=2)
-
+    def __len__(self):
+        return len(self.data)
 
 
 class CNN(nn.Module):
@@ -131,31 +137,20 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
         self.conv_layer = nn.Sequential(
 
-            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(in_channels=50, out_channels=50, kernel_size=3, padding=1),
+            nn.BatchNorm2d(50),
             nn.LeakyReLU(inplace=True),
-            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(in_channels=50, out_channels=75, kernel_size=3, padding=1),
+            nn.BatchNorm2d(75),
             nn.LeakyReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
-
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(inplace=True),
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
+            nn.Dropout(p=0.25),
+            nn.Conv2d(in_channels=75, out_channels=125, kernel_size=3, padding=1),
+            nn.BatchNorm2d(125),
             nn.LeakyReLU(inplace=True),
             nn.MaxPool2d(kernel_size=1, stride=2),
-        )
-
-        self.fc_layer = nn.Sequential(
-            nn.Dropout(p=0.1),
-            nn.Linear(832, 1000),
-            nn.ReLU(inplace=True),
-            nn.Linear(1000, 512),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.1),
-            nn.Linear(512,3)
+            nn.Dropout(p=0.25),
+            nn.Linear(1, 3)
         )
 
     def forward(self, x):
@@ -165,9 +160,6 @@ class CNN(nn.Module):
 
         # flatten
         x = x.view(x.size(0), -1)
-
-        # fc layer
-        x = self.fc_layer(x)
 
         return x
 
@@ -179,6 +171,13 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+    dataset = MyDataset(X_train, y_train)
+    train_loader = DataLoader(
+    dataset,
+    batch_size=10,
+    shuffle=True,
+    num_workers=2,
+)
     # Train the model
     total_step = len(train_loader)
     loss_list = []
@@ -206,21 +205,39 @@ if __name__ == '__main__':
                       .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(),
                               (correct / total) * 100))
 
+    dataset_test = MyDataset(X_test, y_test)
+    test_loader = DataLoader(
+        dataset_test
+    )
+    pred=[]
+    leb=[]
     model.eval()
-    all_pred=torch.tensor([])
     with torch.no_grad():
         correct = 0
         total = 0
         for images, labels in test_loader:
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
+            pred.append(predicted)
+            leb.append(labels)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-            all_pred = torch.cat((all_pred,outputs),dim=0)
+
         print('Test Accuracy of the model on the 10000 test images: {} %'.format((correct / total) * 100))
 
     toc = time.time()
 
     print('duration = ', toc - tic)
-    print(classification_report(testset.target.numpy(),np.argmax(all_pred.numpy(), axis=1)))
-    print("Confusion Matrix:\n", confusion_matrix(testset.target.numpy(),np.argmax(all_pred.numpy(), axis=1)))
+    leb = np.array(leb)
+    pred = np.array(pred)
+# # sparse_categorical_crossentropy: Computes the sparse categorical crossentropy loss. (For multiclass)
+# model.compile(loss='sparse_categorical_crossentropy', metrics=['accuracy'], optimizer='adam')
+#
+# # training the model for 10 epochs
+# model.fit(X_train, y_train, batch_size=128, epochs=10, validation_data=(X_test, y_test))
+# test_loss, test_acc = model.evaluate(X_test,  y_test, verbose=2)
+#
+# x_test_final, y_test_final = dataset_test
+
+print(classification_report(leb, pred,))
+print("Confusion Matrix:\n", confusion_matrix(leb, pred))
