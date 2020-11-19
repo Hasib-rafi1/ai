@@ -37,6 +37,7 @@ class MyDataset(Dataset):
 print("Data preprocessing start....")
 images_dir = os.path.join('import_data/data/images')
 non_human_images_dir = os.path.join('import_data/data/non_human')
+PATH = os.path.join('torch.pt')
 train_csv= pd.read_csv(os.path.join("import_data/train.csv"))
 non_human_csv= pd.read_csv(os.path.join("import_data/non_human.csv"))
 # print(len(train_csv))
@@ -173,39 +174,43 @@ class CNN(nn.Module):
 
 if __name__ == '__main__':
     freeze_support()
-    model = CNN()
+    model = None
+    if os.path.exists(PATH):
+        model = torch.load(PATH)
+    else:
+        model = CNN()
 
-    # Loss and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+        # Loss and optimizer
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Train the model
-    total_step = len(train_loader)
-    loss_list = []
-    acc_list = []
-    for epoch in range(num_epochs):
-        for i, (images, labels) in enumerate(train_loader):
-            # Forward pass
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss_list.append(loss.item())
+        # Train the model
+        total_step = len(train_loader)
+        loss_list = []
+        acc_list = []
+        for epoch in range(num_epochs):
+            for i, (images, labels) in enumerate(train_loader):
+                # Forward pass
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                loss_list.append(loss.item())
 
-            # Backprop and perform Adam optimisation
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                # Backprop and perform Adam optimisation
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-            # Track the accuracy
-            total = labels.size(0)
-            _, predicted = torch.max(outputs.data, 1)
-            correct = (predicted == labels).sum().item()
-            acc_list.append(correct / total)
+                # Track the accuracy
+                total = labels.size(0)
+                _, predicted = torch.max(outputs.data, 1)
+                correct = (predicted == labels).sum().item()
+                acc_list.append(correct / total)
 
-            if (i + 1) % 100 == 0:
-                print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Accuracy: {:.2f}%'
-                      .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(),
-                              (correct / total) * 100))
-
+                if (i + 1) % 100 == 0:
+                    print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Accuracy: {:.2f}%'
+                          .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(),
+                                  (correct / total) * 100))
+    torch.save(model,PATH)
     model.eval()
     all_pred=torch.tensor([])
     with torch.no_grad():

@@ -11,6 +11,10 @@ In this project we implemented CNN in 2 different way (Using PyTorch and Tensorf
 1 project report file. It contains the overall description of the project
 
 1 "import_data" folder contains all the data sets.
+
+1 torch.pt is the save model for pytorch. if you have this in your folder it will avoid training and will load the trained model.
+
+
 Note: If you are cloning the repository you don't need to worry about the data. But you are downloading from different place other than the github. Please download the whole data set and replace the "import_data" folder with the downloaded "import_data" folder . Data link: https://hasibulhuq.com/ai/  or https://www.kaggle.com/mdhasibulhuq/ai-face-with-mask-without-mask-and-non-huma. This images are for research and academic purpose. For the copywrite issue Please see the project report file. The original sources are provided there.
 
 
