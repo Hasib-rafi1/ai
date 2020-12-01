@@ -119,7 +119,7 @@ trainset = MyDataset(data= X_train, target= y_train, transform=transform)
 train_loader = torch.utils.data.DataLoader(trainset, batch_size=32,
                                            shuffle=True, num_workers=2)
 
-testset = trainset = MyDataset(data= X_test, target= y_test, transform=transform)
+testset= MyDataset(data= X_test, target= y_test, transform=transform)
 
 test_loader = torch.utils.data.DataLoader(testset, batch_size=1000,
                                           shuffle=False, num_workers=2)
