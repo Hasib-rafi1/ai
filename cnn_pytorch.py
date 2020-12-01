@@ -34,95 +34,7 @@ class MyDataset(Dataset):
         return len(self.data)
 
 
-print("Data preprocessing start....")
-images_dir = os.path.join('import_data/data/images')
-non_human_images_dir = os.path.join('import_data/data/non_human')
-PATH = os.path.join('torch.pt')
-train_csv= pd.read_csv(os.path.join("import_data/train.csv"))
-non_human_csv= pd.read_csv(os.path.join("import_data/non_human.csv"))
-# print(len(train_csv))
 
-options=['face_with_mask','face_without_mask']
-train= train_csv[train_csv['classname'].isin(options)]
-train.sort_values('name',axis=0,inplace=True)
-
-img_size=50
-data=[]
-human_data=[]
-def create_data():
-       for i in range(len(train)):
-            arr=[]
-            for j in train.iloc[i]:
-                   arr.append(j)
-            try:
-                img_array=cv2.imread(os.path.join(images_dir,arr[0]))
-                new_img_array=cv2.resize(img_array,(img_size,img_size))
-                new_img_array = cv2.cvtColor(new_img_array, cv2.COLOR_BGR2RGB)
-                human_data.append([new_img_array,arr[5]])
-                data.append([new_img_array,arr[5]])
-            except Exception as e:
-                print("Data not included")
-                print(arr[0])
-create_data()
-non_human_data=[]
-def create_non_human_data():
-       for i in range(len(non_human_csv)):
-            arr=[]
-            for j in non_human_csv.iloc[i]:
-                   arr.append(j)
-            try:
-                img_array=cv2.imread(os.path.join(non_human_images_dir,arr[0]))
-                new_img_array=cv2.resize(img_array,(img_size,img_size))
-                new_img_array = cv2.cvtColor(new_img_array, cv2.COLOR_BGR2RGB)
-                non_human_data.append([new_img_array,arr[1]])
-                data.append([new_img_array,arr[1]])
-            except Exception as e:
-                print("Data not included")
-                print(arr[0])
-
-create_non_human_data()
-# print(len(human_data))
-# print(len(non_human_data))
-
-final_data = random.sample(data,len(data))
-x=[]
-y=[]
-for features, labels in final_data:
-    x.append(features)
-    y.append(labels)
-
-lbl=LabelEncoder()
-y=lbl.fit_transform(y)
-
-X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
-
-X_train = np.array(X_train)
-X_test = np.array(X_test)
-y_train = np.array(y_train)
-y_test = np.array(y_test)
-
-
-tic = time.time()
-
-num_epochs = 10
-num_classes =3
-learning_rate = 0.001
-
-transform = transforms.Compose(
-    [transforms.ToPILImage(),
-     transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-trainset = MyDataset(data= X_train, target= y_train, transform=transform)
-
-
-train_loader = torch.utils.data.DataLoader(trainset, batch_size=32,
-                                           shuffle=True, num_workers=2)
-
-testset= MyDataset(data= X_test, target= y_test, transform=transform)
-
-test_loader = torch.utils.data.DataLoader(testset, batch_size=1000,
-                                          shuffle=False, num_workers=2)
 
 
 
@@ -174,6 +86,96 @@ class CNN(nn.Module):
 
 if __name__ == '__main__':
     freeze_support()
+    print("Data preprocessing start....")
+    images_dir = os.path.join('import_data/data/images')
+    non_human_images_dir = os.path.join('import_data/data/non_human')
+    PATH = os.path.join('torch2.pt')
+    train_csv= pd.read_csv(os.path.join("import_data/train.csv"))
+    non_human_csv= pd.read_csv(os.path.join("import_data/non_human.csv"))
+    # print(len(train_csv))
+
+    options=['face_with_mask','face_without_mask']
+    train= train_csv[train_csv['classname'].isin(options)]
+    train.sort_values('name',axis=0,inplace=True)
+
+    img_size=50
+    data=[]
+    human_data=[]
+    def create_data():
+           for i in range(len(train)):
+                arr=[]
+                for j in train.iloc[i]:
+                       arr.append(j)
+                try:
+                    img_array=cv2.imread(os.path.join(images_dir,arr[0]))
+                    crop_image = img_array[arr[2]:arr[4],arr[1]:arr[3]]
+                    new_img_array=cv2.resize(crop_image,(img_size,img_size))
+                    new_img_array = cv2.cvtColor(new_img_array, cv2.COLOR_BGR2RGB)
+                    human_data.append([new_img_array,arr[5]])
+                    data.append([new_img_array,arr[5]])
+                except Exception as e:
+                    print("Data not included")
+                    print(arr[0])
+    create_data()
+    non_human_data=[]
+    def create_non_human_data():
+           for i in range(len(non_human_csv)):
+                arr=[]
+                for j in non_human_csv.iloc[i]:
+                       arr.append(j)
+                try:
+                    img_array=cv2.imread(os.path.join(non_human_images_dir,arr[0]))
+                    new_img_array=cv2.resize(img_array,(img_size,img_size))
+                    new_img_array = cv2.cvtColor(new_img_array, cv2.COLOR_BGR2RGB)
+                    non_human_data.append([new_img_array,arr[1]])
+                    data.append([new_img_array,arr[1]])
+                except Exception as e:
+                    print("Data not included")
+                    print(arr[0])
+
+    create_non_human_data()
+    # print(len(human_data))
+    # print(len(non_human_data))
+
+    final_data = random.sample(data,len(data))
+    x=[]
+    y=[]
+    for features, labels in final_data:
+        x.append(features)
+        y.append(labels)
+
+    lbl=LabelEncoder()
+    y=lbl.fit_transform(y)
+
+    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+
+    X_train = np.array(X_train)
+    X_test = np.array(X_test)
+    y_train = np.array(y_train)
+    y_test = np.array(y_test)
+
+
+    tic = time.time()
+
+    num_epochs = 10
+    num_classes =3
+    learning_rate = 0.001
+
+    transform = transforms.Compose(
+        [transforms.ToPILImage(),
+         transforms.ToTensor(),
+         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+    trainset = MyDataset(data= X_train, target= y_train, transform=transform)
+
+
+    train_loader = torch.utils.data.DataLoader(trainset, batch_size=32,
+                                               shuffle=True, num_workers=2)
+
+    testset= MyDataset(data= X_test, target= y_test, transform=transform)
+
+    test_loader = torch.utils.data.DataLoader(testset, batch_size=1000,
+                                              shuffle=False, num_workers=2)
     model = None
     if os.path.exists(PATH):
         model = torch.load(PATH)
@@ -210,7 +212,7 @@ if __name__ == '__main__':
                     print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Accuracy: {:.2f}%'
                           .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(),
                                   (correct / total) * 100))
-    torch.save(model,PATH)
+        torch.save(model,PATH)
     model.eval()
     all_pred=torch.tensor([])
     with torch.no_grad():
