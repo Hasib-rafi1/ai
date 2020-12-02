@@ -14,6 +14,9 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import KFold
+import warnings
+warnings.filterwarnings("ignore")
 
 class MyDataset(Dataset):
     def __init__(self, data, target, transform=None):
@@ -89,7 +92,7 @@ if __name__ == '__main__':
     print("Data preprocessing start....")
     images_dir = os.path.join('import_data/data/images')
     non_human_images_dir = os.path.join('import_data/data/non_human')
-    PATH = os.path.join('torch2.pt')
+    PATH = os.path.join('torch_k.pt')
     train_csv= pd.read_csv(os.path.join("import_data/train.csv"))
     non_human_csv= pd.read_csv(os.path.join("import_data/non_human.csv"))
     # print(len(train_csv))
@@ -166,25 +169,30 @@ if __name__ == '__main__':
          transforms.ToTensor(),
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    trainset = MyDataset(data= X_train, target= y_train, transform=transform)
-
-
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=32,
-                                               shuffle=True, num_workers=2)
-
     testset= MyDataset(data= X_test, target= y_test, transform=transform)
 
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=1000,
+    test_loader_final = torch.utils.data.DataLoader(testset, batch_size=10000,
                                               shuffle=False, num_workers=2)
     model = None
-    if os.path.exists(PATH):
-        model = torch.load(PATH)
-    else:
-        model = CNN()
+    k_fold_count = 0
+    kfold_result = []
+    def train_model(x_trn, x_val, y_trn, y_val, num_epochs, best_lwlrap, weight_file_name, transform,batch_size,model,criterion,optimizer):
+        global k_fold_count
+        global kfold_result
+        k_fold_count = k_fold_count+1
+        print("KFOLD number: "+str(k_fold_count))
+        trainset = MyDataset(data= X_train, target= y_train, transform=transform)
 
-        # Loss and optimizer
-        criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+        train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+                                                   shuffle=True, num_workers=2)
+
+        testset= MyDataset(data= X_test, target= y_test, transform=transform)
+
+        test_loader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
+                                                  shuffle=False, num_workers=2)
+
+
 
         # Train the model
         total_step = len(train_loader)
@@ -212,22 +220,81 @@ if __name__ == '__main__':
                     print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Accuracy: {:.2f}%'
                           .format(epoch + 1, num_epochs, i + 1, total_step, loss.item(),
                                   (correct / total) * 100))
-        torch.save(model,PATH)
-    model.eval()
-    all_pred=torch.tensor([])
+
+        model.eval()
+
+        with torch.no_grad():
+            correct = 0
+            total = 0
+            for images, labels in test_loader:
+                outputs = model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+        lwlrap = ((correct / total) * 100)
+        a = {'kfold': k_fold_count, 'score': lwlrap}
+        with open('listfile.txt', 'a') as filehandle:
+                filehandle.write('%s\n' % a)
+
+        if lwlrap > best_lwlrap:
+            best_lwlrap = lwlrap
+            if os.path.exists(weight_file_name):
+                os.remove(weight_file_name)
+            torch.save(model,weight_file_name)
+
+
+        return {
+            'best_lwlrap': best_lwlrap,
+            'weight_file_name' : weight_file_name,
+            'model': model
+        }
+
+
+    if os.path.exists(PATH):
+        model = torch.load(PATH)
+        model.eval()
+        # open file and read the content in a list
+        with open('listfile.txt', 'r') as filehandle:
+            for line in filehandle:
+                # remove linebreak which is the last character of the string
+                currentPlace = line[:-1]
+
+                # add item to the list
+                kfold_result.append(currentPlace)
+    else:
+        best_lwlrap = 0
+        weight_file_name = PATH
+        model = CNN()
+
+        # Loss and optimizer
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+        kf = KFold(n_splits=10, random_state=23, shuffle=True)
+        for train_index, test_index in kf.split(np.arange(len(X_train))):
+            X_train_k, X_test_k = X_train[train_index], X_train[test_index]
+            y_train_k, y_test_k = y_train[train_index], y_train[test_index]
+            k_fold_return = train_model(X_train_k, X_test_k, y_train_k, y_test_k, num_epochs, best_lwlrap, weight_file_name, transform, 32,model,criterion,optimizer)
+            best_lwlrap = k_fold_return["best_lwlrap"]
+            model = k_fold_return["model"]
+        model = torch.load(PATH)
+
+    all_pred_final=torch.tensor([])
     with torch.no_grad():
         correct = 0
         total = 0
-        for images, labels in test_loader:
+        for images, labels in test_loader_final:
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-            all_pred = torch.cat((all_pred,outputs),dim=0)
+            all_pred_final = torch.cat((all_pred_final,outputs),dim=0)
         print('Test Accuracy of the model on the 10000 test images: {} %'.format((correct / total) * 100))
 
     toc = time.time()
 
     print('duration = ', toc - tic)
-    print(classification_report(testset.target.numpy(),np.argmax(all_pred.numpy(), axis=1)))
-    print("Confusion Matrix:\n", confusion_matrix(testset.target.numpy(),np.argmax(all_pred.numpy(), axis=1)))
+    print(classification_report(testset.target.numpy(),np.argmax(all_pred_final.numpy(), axis=1)))
+    print("Confusion Matrix:\n", confusion_matrix(testset.target.numpy(),np.argmax(all_pred_final.numpy(), axis=1)))
+    print(kfold_result)
