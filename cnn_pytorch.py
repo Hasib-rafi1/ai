@@ -293,8 +293,33 @@ if __name__ == '__main__':
         print('Test Accuracy of the model on the 10000 test images: {} %'.format((correct / total) * 100))
 
     toc = time.time()
+    class1 = lbl.inverse_transform([0])
+    class2 = lbl.inverse_transform([1])
+    class3 = lbl.inverse_transform([2])
+    print(class1[0])
+    matrix_confusion = [['label' , class1[0], class2[0], class3[0] ],[class1[0]],[class2[0]],[class3[0]]]
 
     print('duration = ', toc - tic)
     print(classification_report(testset.target.numpy(),np.argmax(all_pred_final.numpy(), axis=1)))
-    print("Confusion Matrix:\n", confusion_matrix(testset.target.numpy(),np.argmax(all_pred_final.numpy(), axis=1)))
+    print("Confusion Matrix:\n")
+    ac = confusion_matrix(testset.target.numpy(),np.argmax(all_pred_final.numpy(), axis=1))
+    ac1 = ac[0]
+    ac2 = ac[1]
+    ac3 = ac[2]
+    ac1=[str(x) for x in ac1]
+    ac2=[str(x) for x in ac2]
+    ac3=[str(x) for x in ac3]
+
+    matrix_confusion[1] = matrix_confusion[1]+ ac1
+    matrix_confusion[2] = matrix_confusion[2] + ac2
+    matrix_confusion[3] = matrix_confusion[3] + ac3
+
+
+    s = [[str(e) for e in row] for row in matrix_confusion]
+    lens = [max(map(len, col)) for col in zip(*s)]
+    fmt = '\t'.join('{{:{}}}'.format(x) for x in lens)
+    table = [fmt.format(*row) for row in s]
+    print ('\n'.join(table))
+
+    print("\n KFOLD RESULTS: \n ")
     print(kfold_result)
